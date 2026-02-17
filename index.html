@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Finance Tracker</title>
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <div id="live-polite"    aria-live="polite"    aria-atomic="true" role="status"></div>
+  <div id="live-assertive" aria-live="assertive" aria-atomic="true" role="alert"></div>
+
+  <header role="banner">
+    <h1>Student Finance Tracker</h1>
+    <nav role="navigation" aria-label="Main navigation">
+      <button data-page="about"     aria-current="false">About</button>
+      <button data-page="dashboard" aria-current="page" class="active">Dashboard</button>
+      <button data-page="records"   aria-current="false">Records</button>
+      <button data-page="add"       aria-current="false">Add</button>
+      <button data-page="settings"  aria-current="false">Settings</button>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1" role="main">
+
+    <section id="page-about" aria-labelledby="about-h">
+      <h2 id="about-h">About</h2>
+      <div class="about-block">
+        <h3>Purpose</h3>
+        <p>Track student spending, set a monthly budget cap, search with regex, and view a 7-day chart. Data is saved in your browser via localStorage.</p>
+      </div>
+      <div class="about-block">
+        <h3>Features</h3>
+        <ul>
+          <li>Add, edit, and delete transactions</li>
+          <li>Sort by description, amount, category, or date</li>
+          <li>Live regex search with match highlighting</li>
+          <li>Monthly budget bar with ARIA live alerts</li>
+          <li>7-day spending chart</li>
+          <li>JSON import and export with validation</li>
+          <li>Multi-currency: USD, EUR, GBP</li>
+          <li>Custom categories in Settings</li>
+        </ul>
+      </div>
+      <div class="about-block">
+        <h3>Regex Catalog</h3>
+        <table class="regex-table" aria-label="Validation patterns">
+          <thead><tr><th>Rule</th><th>Pattern</th><th>Catches</th></tr></thead>
+          <tbody>
+            <tr><td>Description</td><td><code>/^\S(?:.*\S)?$|^\S$/</code></td><td>Leading or trailing spaces</td></tr>
+            <tr><td>Amount</td><td><code>/^(0|[1-9]\d*)(\.\d{1,2})?$/</code></td><td>Invalid numbers, too many decimals</td></tr>
+            <tr><td>Date</td><td><code>/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/</code></td><td>Wrong date format</td></tr>
+            <tr><td>Category name</td><td><code>/^[A-Za-z]+(?:[ -][A-Za-z]+)*$/</code></td><td>Numbers, symbols, double spaces</td></tr>
+            <tr><td>Duplicate words (back-reference)</td><td><code>/\b(\w+)\s+\1\b/i</code></td><td>"the the", "my my"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="about-block">
+        <h3>Keyboard Map</h3>
+        <ul>
+          <li><strong>Tab</strong> - move between all interactive elements</li>
+          <li><strong>Enter / Space</strong> - activate buttons and nav</li>
+          <li><strong>Escape</strong> - close any open dialog</li>
+          <li><strong>Skip link</strong> - first Tab press jumps to main content</li>
+        </ul>
+      </div>
+      <div class="about-block">
+        <h3>Contact</h3>
+        <p>GitHub: <a href="https://github.com/EmnaBarezi" target="_blank" rel="noopener">EmnaBarezi</a><br />
+        Email: <a href="mailto:e.barezi@alustudent.com">e.barezi@alustudent.com</a></p>
+      </div>
+    </section>
+
+    <section id="page-dashboard" class="active" aria-labelledby="dash-h">
+      <h2 id="dash-h">Dashboard</h2>
+      <div class="stat-grid" role="region" aria-label="Summary statistics">
+        <div class="stat-box"><span class="stat-value" id="stat-count">0</span><span class="stat-label">Total records</span></div>
+        <div class="stat-box"><span class="stat-value" id="stat-total">$0.00</span><span class="stat-label">Total spent</span></div>
+        <div class="stat-box"><span class="stat-value" id="stat-top">--</span><span class="stat-label">Top category</span></div>
+        <div class="stat-box"><span class="stat-value" id="stat-avg">$0.00</span><span class="stat-label">Average per record</span></div>
+      </div>
+      <div class="card">
+        <h3>Monthly Budget</h3>
+        <p class="budget-meta">Limit: <strong id="cap-display">$500.00</strong> &nbsp;|&nbsp; This month: <strong id="cap-spent">$0.00</strong></p>
+        <div class="budget-bar-track" role="progressbar" aria-label="Monthly budget usage"
+             aria-valuemin="0" aria-valuemax="100" id="cap-bar" aria-valuenow="0">
+          <div class="budget-bar-fill" id="cap-fill" style="width:0%"></div>
+        </div>
+        <p id="cap-status"></p>
+      </div>
+      <div class="card">
+        <h3>Last 7 Days</h3>
+        <div class="chart" id="week-chart" role="img" aria-label="Bar chart of spending last 7 days"></div>
+      </div>
+      <div class="card">
+        <h3>By Category</h3>
+        <div id="cat-breakdown"></div>
+      </div>
+    </section>
+
+    <section id="page-records" aria-labelledby="rec-h">
+      <h2 id="rec-h">Records</h2>
+      <div class="controls">
+        <div class="search-wrap">
+          <label for="search-input">Regex Search</label>
+          <input type="text" id="search-input" placeholder="e.g. coffee|tea"
+            aria-label="Search by regex" aria-describedby="search-error" autocomplete="off" />
+          <span id="search-error" class="search-error" role="alert" aria-live="assertive"></span>
+        </div>
+        <div class="case-wrap">
+          <input type="checkbox" id="case-check" />
+          <label for="case-check">Case-sensitive</label>
+        </div>
+        <div class="filter-wrap">
+          <label for="filter-cat">Category</label>
+          <select id="filter-cat" aria-label="Filter by category"></select>
+        </div>
+        <div class="io-wrap">
+          <button class="btn btn-secondary btn-sm" id="btn-export">Export JSON</button>
+          <button class="btn btn-secondary btn-sm" id="btn-import">Import JSON</button>
+          <input type="file" id="import-file" accept=".json" style="display:none" aria-label="Import JSON file" />
+        </div>
+      </div>
+      <div class="table-wrap" role="region" aria-label="Transaction records">
+        <table id="records-table" aria-label="Transactions">
+          <thead>
+            <tr>
+              <th data-col="description" tabindex="0" scope="col">Description <span class="sort-ind" aria-hidden="true">--</span></th>
+              <th data-col="amount"      tabindex="0" scope="col">Amount <span class="sort-ind" aria-hidden="true">--</span></th>
+              <th data-col="category"    tabindex="0" scope="col">Category <span class="sort-ind" aria-hidden="true">--</span></th>
+              <th data-col="date"        tabindex="0" scope="col">Date <span class="sort-ind" aria-hidden="true">--</span></th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+      </div>
+      <p id="record-count" aria-live="polite"></p>
+    </section>
+
+    <section id="page-add" aria-labelledby="add-h">
+      <h2 id="add-h">Add Transaction</h2>
+      <div class="card">
+        <div id="form-status" class="status-msg" role="status" aria-live="polite"></div>
+        <form id="txn-form" novalidate>
+          <div class="form-row">
+            <div class="field full-width">
+              <label for="f-desc">Description</label>
+              <input type="text" id="f-desc" name="description" aria-required="true"
+                aria-describedby="f-desc-err f-desc-hint" placeholder="e.g. Lunch at cafeteria" maxlength="120" />
+              <span id="f-desc-hint" class="field-hint">No leading or trailing spaces. No repeated consecutive words.</span>
+              <span id="f-desc-err" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+              <label for="f-amount">Amount (USD)</label>
+              <input type="text" id="f-amount" name="amount" aria-required="true"
+                aria-describedby="f-amount-err" placeholder="12.50" inputmode="decimal" />
+              <span id="f-amount-err" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+              <label for="f-cat">Category</label>
+              <select id="f-cat" name="category" aria-required="true" aria-describedby="f-cat-err"></select>
+              <span id="f-cat-err" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+              <label for="f-date">Date</label>
+              <input type="text" id="f-date" name="date" aria-required="true"
+                aria-describedby="f-date-err f-date-hint" placeholder="YYYY-MM-DD" maxlength="10" />
+              <span id="f-date-hint" class="field-hint">Format: YYYY-MM-DD</span>
+              <span id="f-date-err" class="field-error" role="alert"></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="btn-submit">Save</button>
+            <button type="button" class="btn btn-secondary" id="btn-cancel" style="display:none">Cancel</button>
+          </div>
+          <input type="hidden" id="f-id" />
+        </form>
+      </div>
+    </section>
+
+    <section id="page-settings" aria-labelledby="settings-h">
+      <h2 id="settings-h">Settings</h2>
+      <div class="settings-grid">
+        <div class="card">
+          <h3>Monthly Budget Cap</h3>
+          <div class="field" style="max-width:220px">
+            <label for="s-budget">Cap (USD)</label>
+            <input type="number" id="s-budget" min="1" step="1" placeholder="500" />
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-save-budget" style="margin-top:.75rem">Save</button>
+        </div>
+        <div class="card">
+          <h3>Currency Rates</h3>
+          <p class="settings-note">1 USD equals the value below.</p>
+          <div class="rate-row">
+            <div class="field"><label for="s-eur">EUR rate</label><input type="number" id="s-eur" step="0.0001" placeholder="0.92" /></div>
+            <div class="field"><label for="s-gbp">GBP rate</label><input type="number" id="s-gbp" step="0.0001" placeholder="0.79" /></div>
+            <button class="btn btn-primary btn-sm" id="btn-save-rates" style="align-self:flex-end">Save</button>
+          </div>
+          <p id="rate-preview" class="settings-note" style="margin-top:.6rem"></p>
+        </div>
+        <div class="card">
+          <h3>Categories</h3>
+          <p class="settings-note">Letters, spaces, and hyphens only.</p>
+          <div class="cat-input-row">
+            <input type="text" id="new-cat-input" placeholder="e.g. Groceries"
+              aria-label="New category name" aria-describedby="new-cat-err" />
+            <button class="btn btn-primary btn-sm" id="btn-add-cat">Add</button>
+          </div>
+          <span id="new-cat-err" class="field-error" style="margin-top:4px"></span>
+          <div id="cat-list" class="cat-list"></div>
+        </div>
+        <div class="card">
+          <h3>Danger Zone</h3>
+          <p class="settings-note">Remove all transaction records permanently.</p>
+          <button class="btn btn-danger btn-sm" id="btn-clear">Clear all data</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer role="contentinfo">
+    Student Finance Tracker &mdash; Vanilla JS &bull; localStorage &bull; WCAG AA
+  </footer>
+
+  <div class="modal-overlay" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="del-modal-title">
+    <div class="modal">
+      <h3 id="del-modal-title">Delete transaction?</h3>
+      <p>This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-danger"    id="modal-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="clear-modal" role="dialog" aria-modal="true" aria-labelledby="clr-modal-title">
+    <div class="modal">
+      <h3 id="clr-modal-title">Clear all data?</h3>
+      <p>This permanently deletes every transaction and cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="clear-cancel">Cancel</button>
+        <button class="btn btn-danger"    id="clear-confirm">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/storage.js"></script>
+  <script src="scripts/validators.js"></script>
+  <script src="scripts/state.js"></script>
+  <script src="scripts/helpers.js"></script>
+  <script src="scripts/dashboard.js"></script>
+  <script src="scripts/records.js"></script>
+  <script src="scripts/form.js"></script>
+  <script src="scripts/settings.js"></script>
+  <script src="scripts/io.js"></script>
+  <script src="scripts/nav.js"></script>
+  <script src="scripts/main.js"></script>
+
+</body>
+</html>

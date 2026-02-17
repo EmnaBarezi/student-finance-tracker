@@ -1,0 +1,14 @@
+[
+  { "id": "txn_0001", "description": "Lunch at cafeteria",        "amount": "12.50",   "category": "Food",          "date": "2025-09-25", "createdAt": "2025-09-25T12:00:00Z", "updatedAt": "2025-09-25T12:00:00Z" },
+  { "id": "txn_0002", "description": "Chemistry textbook",         "amount": "89.99",   "category": "Books",         "date": "2025-09-23", "createdAt": "2025-09-23T09:30:00Z", "updatedAt": "2025-09-23T09:30:00Z" },
+  { "id": "txn_0003", "description": "Monthly bus pass",           "amount": "45.00",   "category": "Transport",     "date": "2025-09-20", "createdAt": "2025-09-20T08:00:00Z", "updatedAt": "2025-09-20T08:00:00Z" },
+  { "id": "txn_0004", "description": "Coffee with friends",        "amount": "8.75",    "category": "Entertainment", "date": "2025-09-28", "createdAt": "2025-09-28T15:00:00Z", "updatedAt": "2025-09-28T15:00:00Z" },
+  { "id": "txn_0005", "description": "Semester registration fees", "amount": "320.00",  "category": "Fees",          "date": "2025-09-01", "createdAt": "2025-09-01T08:00:00Z", "updatedAt": "2025-09-01T08:00:00Z" },
+  { "id": "txn_0006", "description": "Pizza slice",                "amount": "0.99",    "category": "Food",          "date": "2025-09-30", "createdAt": "2025-09-30T20:00:00Z", "updatedAt": "2025-09-30T20:00:00Z" },
+  { "id": "txn_0007", "description": "Biology lab manual",         "amount": "1500.00", "category": "Books",         "date": "2025-10-01", "createdAt": "2025-10-01T10:00:00Z", "updatedAt": "2025-10-01T10:00:00Z" },
+  { "id": "txn_0008", "description": "Tea and biscuits",           "amount": "3.20",    "category": "Food",          "date": "2025-10-02", "createdAt": "2025-10-02T11:30:00Z", "updatedAt": "2025-10-02T11:30:00Z" },
+  { "id": "txn_0009", "description": "Movie night ticket",         "amount": "15.50",   "category": "Entertainment", "date": "2025-10-03", "createdAt": "2025-10-03T19:00:00Z", "updatedAt": "2025-10-03T19:00:00Z" },
+  { "id": "txn_0010", "description": "Stationery supplies",        "amount": "22.30",   "category": "Other",         "date": "2025-10-04", "createdAt": "2025-10-04T13:00:00Z", "updatedAt": "2025-10-04T13:00:00Z" },
+  { "id": "txn_0011", "description": "Uber ride to campus",        "amount": "37.80",   "category": "Transport",     "date": "2025-10-05", "createdAt": "2025-10-05T06:00:00Z", "updatedAt": "2025-10-05T06:00:00Z" },
+  { "id": "txn_0012", "description": "Weekly grocery shopping",    "amount": "56.40",   "category": "Food",          "date": "2025-10-06", "createdAt": "2025-10-06T17:00:00Z", "updatedAt": "2025-10-06T17:00:00Z" }
+]
