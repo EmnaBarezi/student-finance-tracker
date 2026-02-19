@@ -7,13 +7,14 @@
   <link rel="stylesheet" href="styles/main.css" />
 </head>
 <body>
-
+<!-- skip link so keybord users can jump past the nav -->
   <a class="skip-link" href="#main">Skip to main content</a>
   <div id="live-polite"    aria-live="polite"    aria-atomic="true" role="status"></div>
   <div id="live-assertive" aria-live="assertive" aria-atomic="true" role="alert"></div>
-
+<!-- Top bar with the app title and page buttons -->
   <header role="banner">
     <h1>Student Finance Tracker</h1>
+    <!-- nav buttons to switch between pages -->
     <nav role="navigation" aria-label="Main navigation">
       <button data-page="about"     aria-current="false">About</button>
       <button data-page="dashboard" aria-current="page" class="active">Dashboard</button>
@@ -31,48 +32,14 @@
         <h3>Purpose</h3>
         <p>Track student spending, set a monthly budget cap, search with regex, and view a 7-day chart. Data is saved in your browser via localStorage.</p>
       </div>
-      <div class="about-block">
-        <h3>Features</h3>
-        <ul>
-          <li>Add, edit, and delete transactions</li>
-          <li>Sort by description, amount, category, or date</li>
-          <li>Live regex search with match highlighting</li>
-          <li>Monthly budget bar with ARIA live alerts</li>
-          <li>7-day spending chart</li>
-          <li>JSON import and export with validation</li>
-          <li>Multi-currency: USD, EUR, GBP</li>
-          <li>Custom categories in Settings</li>
-        </ul>
-      </div>
-      <div class="about-block">
-        <h3>Regex Catalog</h3>
-        <table class="regex-table" aria-label="Validation patterns">
-          <thead><tr><th>Rule</th><th>Pattern</th><th>Catches</th></tr></thead>
-          <tbody>
-            <tr><td>Description</td><td><code>/^\S(?:.*\S)?$|^\S$/</code></td><td>Leading or trailing spaces</td></tr>
-            <tr><td>Amount</td><td><code>/^(0|[1-9]\d*)(\.\d{1,2})?$/</code></td><td>Invalid numbers, too many decimals</td></tr>
-            <tr><td>Date</td><td><code>/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/</code></td><td>Wrong date format</td></tr>
-            <tr><td>Category name</td><td><code>/^[A-Za-z]+(?:[ -][A-Za-z]+)*$/</code></td><td>Numbers, symbols, double spaces</td></tr>
-            <tr><td>Duplicate words (back-reference)</td><td><code>/\b(\w+)\s+\1\b/i</code></td><td>"the the", "my my"</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="about-block">
-        <h3>Keyboard Map</h3>
-        <ul>
-          <li><strong>Tab</strong> - move between all interactive elements</li>
-          <li><strong>Enter / Space</strong> - activate buttons and nav</li>
-          <li><strong>Escape</strong> - close any open dialog</li>
-          <li><strong>Skip link</strong> - first Tab press jumps to main content</li>
-        </ul>
-      </div>
+    
       <div class="about-block">
         <h3>Contact</h3>
         <p>GitHub: <a href="https://github.com/EmnaBarezi" target="_blank" rel="noopener">EmnaBarezi</a><br />
         Email: <a href="mailto:e.barezi@alustudent.com">e.barezi@alustudent.com</a></p>
       </div>
     </section>
-
+<!-- Dashbord is the default page users land on -->
     <section id="page-dashboard" class="active" aria-labelledby="dash-h">
       <h2 id="dash-h">Dashboard</h2>
       <div class="stat-grid" role="region" aria-label="Summary statistics">
@@ -81,6 +48,7 @@
         <div class="stat-box"><span class="stat-value" id="stat-top">--</span><span class="stat-label">Top category</span></div>
         <div class="stat-box"><span class="stat-value" id="stat-avg">$0.00</span><span class="stat-label">Average per record</span></div>
       </div>
+      <!-- progress bar showing how much of the monthly budget is used -->
       <div class="card">
         <h3>Monthly Budget</h3>
         <p class="budget-meta">Limit: <strong id="cap-display">$500.00</strong> &nbsp;|&nbsp; This month: <strong id="cap-spent">$0.00</strong></p>
@@ -90,6 +58,7 @@
         </div>
         <p id="cap-status"></p>
       </div>
+      <!-- bar past for the past 7 days, rendered by dashbord.js -->
       <div class="card">
         <h3>Last 7 Days</h3>
         <div class="chart" id="week-chart" role="img" aria-label="Bar chart of spending last 7 days"></div>
@@ -134,6 +103,7 @@
               <th scope="col">Actions</th>
             </tr>
           </thead>
+          <!-- rows are injected here by records.js -->
           <tbody id="records-body"></tbody>
         </table>
       </div>
@@ -180,10 +150,11 @@
         </form>
       </div>
     </section>
-
+<!-- I am adding a section with page section id -->
     <section id="page-settings" aria-labelledby="settings-h">
       <h2 id="settings-h">Settings</h2>
       <div class="settings-grid">
+        <!-- I am setting the monthly spending limit -->
         <div class="card">
           <h3>Monthly Budget Cap</h3>
           <div class="field" style="max-width:220px">
@@ -213,6 +184,7 @@
           <span id="new-cat-err" class="field-error" style="margin-top:4px"></span>
           <div id="cat-list" class="cat-list"></div>
         </div>
+        wipes everything, hence the confirm modal
         <div class="card">
           <h3>Danger Zone</h3>
           <p class="settings-note">Remove all transaction records permanently.</p>
@@ -224,8 +196,15 @@
   </main>
 
   <footer role="contentinfo">
-    Student Finance Tracker &mdash; Vanilla JS &bull; localStorage &bull; WCAG AA
-  </footer>
+  <p>
+    <strong>GitHub:</strong> 
+    <a href="https://github.com/EmnaBarezi" target="_blank" rel="noopener noreferrer">github.com/EmnaBarezi</a>
+  </p>
+  <p>
+    <strong>Email:</strong> 
+    <a href="mailto:e.barezi@alustudent.com">e.barezi@alustudent.com</a>
+  </p>
+</footer>
 
   <div class="modal-overlay" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="del-modal-title">
     <div class="modal">
@@ -238,6 +217,7 @@
     </div>
   </div>
 
+  <!-- popup for confirming the clear all action -->
   <div class="modal-overlay" id="clear-modal" role="dialog" aria-modal="true" aria-labelledby="clr-modal-title">
     <div class="modal">
       <h3 id="clr-modal-title">Clear all data?</h3>
@@ -248,7 +228,7 @@
       </div>
     </div>
   </div>
-
+<!-- these are scripts loaded in order so each one has what it needs -->
   <script src="scripts/storage.js"></script>
   <script src="scripts/validators.js"></script>
   <script src="scripts/state.js"></script>

@@ -327,22 +327,6 @@ tr:hover td           { background: #eef3f8; }
 .empty-row td { text-align: center; color: var(--muted); padding: 1.5rem; }
 
 /* ── Badges ── */
-.badge {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: 0.72rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 1px solid transparent;
-}
-.badge-food          { background: #e8f5e9; color: #2a6e3f; border-color: #7fbb9a; }
-.badge-books         { background: #e8eaf6; color: #3c4aad; border-color: #9fa8da; }
-.badge-transport     { background: #fff8e1; color: #7a5500; border-color: #f0c040; }
-.badge-entertainment { background: #fce4ec; color: #8b1a3b; border-color: #f48fb1; }
-.badge-fees          { background: #fbe9e7; color: #7d2a1c; border-color: #e59b90; }
-.badge-other         { background: #f3f3f3; color: #444;    border-color: #bbb; }
 
 /* ── Inline edit inputs ── */
 .edit-input {
@@ -512,4 +496,22 @@ footer {
   }
   td.actions-cell::before { display: none; }
   td.actions-cell { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+}
+
+footer {
+  background: var(--primary-dark);
+  color: rgba(255, 255, 255, 0.75);
+  display: flex;
+  justify-content: space-around;
+  font-size: 0.78rem;
+  padding: 0.75rem 1rem;
+}
+
+footer a {
+  color: #2c5f8a;  /* Same blue as primary links */
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
 }
