@@ -1,0 +1,651 @@
+/* =========================================================
+   Student Finance Tracker — app.js
+   Pairs with the HTML structure described in the UI spec.
+   All data is persisted in localStorage.
+   ========================================================= */
+
+'use strict';
+
+// ── Constants & Keys ────────────────────────────────────────
+const STORAGE_KEYS = {
+  transactions: 'sft_transactions',
+  budget:       'sft_budget',
+  categories:   'sft_categories',
+  rates:        'sft_rates',
+};
+
+const DEFAULT_CATEGORIES = ['Food', 'Transport', 'Housing', 'Entertainment', 'Health', 'Education', 'Other'];
+const DEFAULT_BUDGET      = 500;
+const DEFAULT_RATES       = { EUR: 0.92, GBP: 0.79 };
+
+// ── State ────────────────────────────────────────────────────
+let state = {
+  transactions: [],
+  budget:       DEFAULT_BUDGET,
+  categories:   [...DEFAULT_CATEGORIES],
+  rates:        { ...DEFAULT_RATES },
+};
+
+// ── Persistence ──────────────────────────────────────────────
+function loadState() {
+  try {
+    const t = localStorage.getItem(STORAGE_KEYS.transactions);
+    if (t) state.transactions = JSON.parse(t);
+
+    const b = localStorage.getItem(STORAGE_KEYS.budget);
+    if (b) state.budget = parseFloat(b);
+
+    const c = localStorage.getItem(STORAGE_KEYS.categories);
+    if (c) state.categories = JSON.parse(c);
+
+    const r = localStorage.getItem(STORAGE_KEYS.rates);
+    if (r) state.rates = JSON.parse(r);
+  } catch (e) {
+    console.warn('Failed to load state from localStorage:', e);
+  }
+}
+
+function saveTransactions() {
+  localStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(state.transactions));
+}
+
+function saveBudget() {
+  localStorage.setItem(STORAGE_KEYS.budget, state.budget);
+}
+
+function saveCategories() {
+  localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(state.categories));
+}
+
+function saveRates() {
+  localStorage.setItem(STORAGE_KEYS.rates, JSON.stringify(state.rates));
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function generateId() {
+  return '_' + Math.random().toString(36).slice(2, 11) + Date.now();
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isValidDate(str) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(Date.parse(str));
+}
+
+function isValidAmount(val) {
+  return /^\d+(\.\d{1,2})?$/.test(val) && parseFloat(val) > 0;
+}
+
+/** No leading/trailing spaces; no repeated consecutive words */
+function isValidDescription(str) {
+  if (str !== str.trim()) return false;
+  const words = str.trim().split(/\s+/);
+  for (let i = 1; i < words.length; i++) {
+    if (words[i].toLowerCase() === words[i - 1].toLowerCase()) return false;
+  }
+  return str.trim().length > 0;
+}
+
+function isValidCategory(str) {
+  return /^[A-Za-z\s\-]+$/.test(str) && str.trim().length > 0;
+}
+
+function currentMonthTotal() {
+  const now   = new Date();
+  const year  = now.getFullYear();
+  const month = now.getMonth();
+  return state.transactions
+    .filter(tx => {
+      const d = new Date(tx.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    })
+    .reduce((sum, tx) => sum + tx.amount, 0);
+}
+
+function topCategory() {
+  if (!state.transactions.length) return '--';
+  const totals = {};
+  state.transactions.forEach(tx => {
+    totals[tx.category] = (totals[tx.category] || 0) + tx.amount;
+  });
+  return Object.entries(totals).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function last7DaysData() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days.map(date => ({
+    date,
+    label: date.slice(5),
+    total: state.transactions
+      .filter(tx => tx.date === date)
+      .reduce((s, tx) => s + tx.amount, 0),
+  }));
+}
+
+function categoryBreakdown() {
+  const totals = {};
+  state.transactions.forEach(tx => {
+    totals[tx.category] = (totals[tx.category] || 0) + tx.amount;
+  });
+  return totals;
+}
+
+// ── DOM Refs ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// Dashboard
+const elTotalRecords  = $('total-records');
+const elTotalSpent    = $('total-spent');
+const elTopCategory   = $('top-category');
+const elAvgPerRecord  = $('avg-per-record');
+const elBudgetLimit   = $('budget-limit');
+const elBudgetMonth   = $('budget-month');
+const elBudgetBar     = $('budget-bar');   // optional progress bar
+
+// Charts
+const elBarChart  = $('bar-chart');    // <canvas> for last 7 days
+const elPieChart  = $('pie-chart');    // <canvas> for categories
+
+// Records / Search
+const elSearchInput = $('search-input');
+const elSearchCase  = $('search-case');
+const elCategoryFilter = $('category-filter');
+const elRecordsBody = $('records-body');
+
+// Add form
+const elAddForm       = $('add-form');
+const elAddDesc       = $('add-desc');
+const elAddAmount     = $('add-amount');
+const elAddCategory   = $('add-category');
+const elAddDate       = $('add-date');
+const elAddError      = $('add-error');
+const elBtnShowForm   = $('btn-show-form');
+const elBtnSave       = $('btn-save');
+const elBtnCancel     = $('btn-cancel');
+
+// Export / Import
+const elBtnExport = $('btn-export');
+const elBtnImport = $('btn-import');
+const elImportFile = $('import-file');
+
+// Settings
+const elSettingsBudget = $('settings-budget');
+const elBtnSaveBudget  = $('btn-save-budget');
+const elRateEUR        = $('rate-eur');
+const elRateGBP        = $('rate-gbp');
+const elBtnSaveRates   = $('btn-save-rates');
+
+// Categories settings
+const elCatList     = $('cat-list');
+const elNewCatInput = $('new-cat-input');
+const elBtnAddCat   = $('btn-add-cat');
+
+// Danger zone
+const elBtnClearAll  = $('btn-clear-all');
+
+// Modals
+const elDeleteModal  = $('delete-modal');
+const elClearModal   = $('clear-modal');
+const elBtnConfirmDelete = $('btn-confirm-delete');
+const elBtnCancelDelete  = $('btn-cancel-delete');
+const elBtnConfirmClear  = $('btn-confirm-clear');
+const elBtnCancelClear   = $('btn-cancel-clear');
+
+let pendingDeleteId = null;
+
+// Chart instances (requires Chart.js to be loaded in HTML)
+let barChartInstance  = null;
+let pieChartInstance  = null;
+
+// ── Render Dashboard ─────────────────────────────────────────
+function renderDashboard() {
+  const total = state.transactions.reduce((s, tx) => s + tx.amount, 0);
+  const count = state.transactions.length;
+  const monthTotal = currentMonthTotal();
+
+  if (elTotalRecords) elTotalRecords.textContent  = count;
+  if (elTotalSpent)   elTotalSpent.textContent    = `$${total.toFixed(2)}`;
+  if (elTopCategory)  elTopCategory.textContent   = topCategory();
+  if (elAvgPerRecord) elAvgPerRecord.textContent  = count ? `$${(total / count).toFixed(2)}` : '$0.00';
+  if (elBudgetLimit)  elBudgetLimit.textContent   = `$${state.budget.toFixed(2)}`;
+  if (elBudgetMonth)  elBudgetMonth.textContent   = `$${monthTotal.toFixed(2)}`;
+
+  if (elBudgetBar) {
+    const pct = Math.min(100, (monthTotal / state.budget) * 100);
+    elBudgetBar.style.width = pct + '%';
+    elBudgetBar.style.background = pct >= 100 ? '#e74c3c' : pct >= 80 ? '#f39c12' : '#2ecc71';
+  }
+}
+
+// ── Render Charts ────────────────────────────────────────────
+function renderCharts() {
+  renderBarChart();
+  renderPieChart();
+}
+
+function renderBarChart() {
+  if (!elBarChart || typeof Chart === 'undefined') return;
+  const data = last7DaysData();
+  if (barChartInstance) barChartInstance.destroy();
+  barChartInstance = new Chart(elBarChart, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.label),
+      datasets: [{
+        label: 'Spending ($)',
+        data:  data.map(d => d.total),
+        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+        borderColor:     'rgba(52, 152, 219, 1)',
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales:  { y: { beginAtZero: true } },
+    },
+  });
+}
+
+function renderPieChart() {
+  if (!elPieChart || typeof Chart === 'undefined') return;
+  const breakdown = categoryBreakdown();
+  const labels    = Object.keys(breakdown);
+  const values    = Object.values(breakdown);
+  const colors    = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e'];
+  if (pieChartInstance) pieChartInstance.destroy();
+  pieChartInstance = new Chart(elPieChart, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data:            values,
+        backgroundColor: colors.slice(0, labels.length),
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'right' } },
+    },
+  });
+}
+
+// ── Render Records ────────────────────────────────────────────
+function getFilteredTransactions() {
+  let txs = [...state.transactions];
+
+  // Regex / text search
+  const query = elSearchInput ? elSearchInput.value.trim() : '';
+  if (query) {
+    try {
+      const flags = (elSearchCase && elSearchCase.checked) ? '' : 'i';
+      const re    = new RegExp(query, flags);
+      txs = txs.filter(tx =>
+        re.test(tx.description) || re.test(tx.category) || re.test(tx.amount.toString())
+      );
+    } catch {
+      // invalid regex — fall back to plain text
+      const lower = query.toLowerCase();
+      txs = txs.filter(tx =>
+        tx.description.toLowerCase().includes(lower) ||
+        tx.category.toLowerCase().includes(lower)
+      );
+    }
+  }
+
+  // Category filter
+  const cat = elCategoryFilter ? elCategoryFilter.value : '';
+  if (cat) txs = txs.filter(tx => tx.category === cat);
+
+  // Sort newest first
+  txs.sort((a, b) => b.date.localeCompare(a.date));
+  return txs;
+}
+
+function renderRecords() {
+  if (!elRecordsBody) return;
+  const txs = getFilteredTransactions();
+  if (!txs.length) {
+    elRecordsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;">No records found.</td></tr>';
+    return;
+  }
+  elRecordsBody.innerHTML = txs.map(tx => `
+    <tr data-id="${tx.id}">
+      <td>${escapeHtml(tx.description)}</td>
+      <td>$${tx.amount.toFixed(2)}</td>
+      <td>${escapeHtml(tx.category)}</td>
+      <td>${tx.date}</td>
+      <td>
+        <button class="btn-delete-tx" data-id="${tx.id}" aria-label="Delete transaction">🗑</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Populate Selects ─────────────────────────────────────────
+function populateCategorySelects() {
+  const selects = [elAddCategory, elCategoryFilter].filter(Boolean);
+  selects.forEach(sel => {
+    const current = sel.value;
+    sel.innerHTML = '';
+    if (sel === elCategoryFilter) {
+      const opt = document.createElement('option');
+      opt.value = ''; opt.textContent = 'All categories';
+      sel.appendChild(opt);
+    }
+    state.categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat; opt.textContent = cat;
+      sel.appendChild(opt);
+    });
+    sel.value = current;
+  });
+}
+
+function renderCategoryList() {
+  if (!elCatList) return;
+  elCatList.innerHTML = state.categories.map(cat => `
+    <li>
+      <span>${escapeHtml(cat)}</span>
+      <button class="btn-remove-cat" data-cat="${escapeHtml(cat)}" aria-label="Remove category">✕</button>
+    </li>
+  `).join('');
+}
+
+// ── Add Transaction ──────────────────────────────────────────
+function showAddForm() {
+  if (!elAddForm) return;
+  elAddForm.style.display = 'block';
+  elAddDate.value = todayStr();
+  if (elAddError) elAddError.textContent = '';
+}
+
+function hideAddForm() {
+  if (!elAddForm) return;
+  elAddForm.style.display = 'none';
+  elAddDesc.value   = '';
+  elAddAmount.value = '';
+  elAddDate.value   = '';
+  if (elAddError) elAddError.textContent = '';
+}
+
+function handleSave() {
+  const desc   = elAddDesc   ? elAddDesc.value   : '';
+  const amount = elAddAmount ? elAddAmount.value  : '';
+  const cat    = elAddCategory ? elAddCategory.value : '';
+  const date   = elAddDate   ? elAddDate.value   : '';
+
+  if (!isValidDescription(desc)) {
+    showError('Description is invalid (no leading/trailing spaces, no repeated consecutive words).');
+    return;
+  }
+  if (!isValidAmount(amount)) {
+    showError('Amount must be a positive number (e.g. 12.50).');
+    return;
+  }
+  if (!cat) {
+    showError('Please select a category.');
+    return;
+  }
+  if (!isValidDate(date)) {
+    showError('Date must be in YYYY-MM-DD format.');
+    return;
+  }
+
+  const tx = {
+    id:          generateId(),
+    description: desc.trim(),
+    amount:      parseFloat(parseFloat(amount).toFixed(2)),
+    category:    cat,
+    date,
+  };
+
+  state.transactions.push(tx);
+  saveTransactions();
+  hideAddForm();
+  renderAll();
+}
+
+function showError(msg) {
+  if (elAddError) elAddError.textContent = msg;
+}
+
+// ── Delete ───────────────────────────────────────────────────
+function openDeleteModal(id) {
+  pendingDeleteId = id;
+  if (elDeleteModal) elDeleteModal.style.display = 'flex';
+}
+
+function closeDeleteModal() {
+  pendingDeleteId = null;
+  if (elDeleteModal) elDeleteModal.style.display = 'none';
+}
+
+function confirmDelete() {
+  if (!pendingDeleteId) return;
+  state.transactions = state.transactions.filter(tx => tx.id !== pendingDeleteId);
+  saveTransactions();
+  closeDeleteModal();
+  renderAll();
+}
+
+// ── Clear All ────────────────────────────────────────────────
+function openClearModal() {
+  if (elClearModal) elClearModal.style.display = 'flex';
+}
+
+function closeClearModal() {
+  if (elClearModal) elClearModal.style.display = 'none';
+}
+
+function confirmClear() {
+  state.transactions = [];
+  saveTransactions();
+  closeClearModal();
+  renderAll();
+}
+
+// ── Export / Import ──────────────────────────────────────────
+function exportJSON() {
+  const data = JSON.stringify(state.transactions, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `transactions_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Not an array');
+      // Validate each entry minimally
+      imported.forEach(tx => {
+        if (!tx.description || !tx.amount || !tx.category || !tx.date) throw new Error('Invalid record');
+        if (!tx.id) tx.id = generateId();
+      });
+      state.transactions = imported;
+      saveTransactions();
+      renderAll();
+      alert(`Imported ${imported.length} transaction(s) successfully.`);
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Settings ─────────────────────────────────────────────────
+function saveBudgetSetting() {
+  const val = elSettingsBudget ? parseFloat(elSettingsBudget.value) : NaN;
+  if (isNaN(val) || val <= 0) { alert('Enter a valid budget amount.'); return; }
+  state.budget = val;
+  saveBudget();
+  renderDashboard();
+  alert('Budget saved!');
+}
+
+function saveRatesSetting() {
+  const eur = elRateEUR ? parseFloat(elRateEUR.value) : NaN;
+  const gbp = elRateGBP ? parseFloat(elRateGBP.value) : NaN;
+  if (isNaN(eur) || eur <= 0 || isNaN(gbp) || gbp <= 0) { alert('Enter valid rates.'); return; }
+  state.rates = { EUR: eur, GBP: gbp };
+  saveRates();
+  alert('Rates saved!');
+}
+
+// ── Categories ───────────────────────────────────────────────
+function addCategory() {
+  const val = elNewCatInput ? elNewCatInput.value.trim() : '';
+  if (!isValidCategory(val)) {
+    alert('Category name: letters, spaces, and hyphens only.');
+    return;
+  }
+  if (state.categories.map(c => c.toLowerCase()).includes(val.toLowerCase())) {
+    alert('Category already exists.');
+    return;
+  }
+  state.categories.push(val);
+  saveCategories();
+  if (elNewCatInput) elNewCatInput.value = '';
+  renderCategoryList();
+  populateCategorySelects();
+}
+
+function removeCategory(cat) {
+  state.categories = state.categories.filter(c => c !== cat);
+  saveCategories();
+  renderCategoryList();
+  populateCategorySelects();
+}
+
+// ── Render All ───────────────────────────────────────────────
+function renderAll() {
+  renderDashboard();
+  renderCharts();
+  renderRecords();
+  populateCategorySelects();
+  renderCategoryList();
+  syncSettingsInputs();
+}
+
+function syncSettingsInputs() {
+  if (elSettingsBudget) elSettingsBudget.value = state.budget;
+  if (elRateEUR) elRateEUR.value = state.rates.EUR;
+  if (elRateGBP) elRateGBP.value = state.rates.GBP;
+}
+
+// ── Event Listeners ──────────────────────────────────────────
+function bindEvents() {
+  // Show add form
+  if (elBtnShowForm) elBtnShowForm.addEventListener('click', showAddForm);
+  if (elBtnSave)     elBtnSave.addEventListener('click', handleSave);
+  if (elBtnCancel)   elBtnCancel.addEventListener('click', hideAddForm);
+
+  // Records: delegate delete buttons
+  if (elRecordsBody) {
+    elRecordsBody.addEventListener('click', e => {
+      const btn = e.target.closest('.btn-delete-tx');
+      if (btn) openDeleteModal(btn.dataset.id);
+    });
+  }
+
+  // Search & filter
+  if (elSearchInput)    elSearchInput.addEventListener('input', renderRecords);
+  if (elSearchCase)     elSearchCase.addEventListener('change', renderRecords);
+  if (elCategoryFilter) elCategoryFilter.addEventListener('change', renderRecords);
+
+  // Delete modal
+  if (elBtnConfirmDelete) elBtnConfirmDelete.addEventListener('click', confirmDelete);
+  if (elBtnCancelDelete)  elBtnCancelDelete.addEventListener('click', closeDeleteModal);
+
+  // Clear modal
+  if (elBtnClearAll)     elBtnClearAll.addEventListener('click', openClearModal);
+  if (elBtnConfirmClear) elBtnConfirmClear.addEventListener('click', confirmClear);
+  if (elBtnCancelClear)  elBtnCancelClear.addEventListener('click', closeClearModal);
+
+  // Export / Import
+  if (elBtnExport) elBtnExport.addEventListener('click', exportJSON);
+  if (elBtnImport) elBtnImport.addEventListener('click', () => elImportFile && elImportFile.click());
+  if (elImportFile) elImportFile.addEventListener('change', e => {
+    importJSON(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  // Settings
+  if (elBtnSaveBudget) elBtnSaveBudget.addEventListener('click', saveBudgetSetting);
+  if (elBtnSaveRates)  elBtnSaveRates.addEventListener('click', saveRatesSetting);
+
+  // Categories
+  if (elBtnAddCat) elBtnAddCat.addEventListener('click', addCategory);
+  if (elNewCatInput) elNewCatInput.addEventListener('keydown', e => { if (e.key === 'Enter') addCategory(); });
+  if (elCatList) {
+    elCatList.addEventListener('click', e => {
+      const btn = e.target.closest('.btn-remove-cat');
+      if (btn) removeCategory(btn.dataset.cat);
+    });
+  }
+
+  // Close modals on backdrop click
+  [elDeleteModal, elClearModal].forEach(modal => {
+    if (modal) modal.addEventListener('click', e => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+  });
+
+  // Keyboard: Esc closes modals
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeDeleteModal();
+      closeClearModal();
+    }
+  });
+}
+
+// ── Navigation (single-page tab switching) ───────────────────
+function bindNav() {
+  const navLinks   = document.querySelectorAll('[data-page]');
+  const pages      = document.querySelectorAll('.page');
+  if (!navLinks.length) return;
+
+  navLinks.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = link.dataset.page;
+      pages.forEach(p => p.style.display = p.id === target ? 'block' : 'none');
+      navLinks.forEach(l => l.classList.toggle('active', l.dataset.page === target));
+    });
+  });
+
+  // Show first page by default
+  if (pages.length) {
+    pages.forEach((p, i) => p.style.display = i === 0 ? 'block' : 'none');
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────
+function init() {
+  loadState();
+  bindNav();
+  bindEvents();
+  renderAll();
+  if (elAddForm) elAddForm.style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', init);
