@@ -3,7 +3,7 @@
 A simple web app to help students track their spending. Built with plain HTML, CSS, and JavaScript — no fancy frameworks needed.
 
 ---
-# Demo Video: https://studio.youtube.com/video/OQ4_4RamUVg/edit
+# Demo Video: https://youtu.be/OQ4_4RamUVg
 ## What Is This?
 
 This is a *Student Finance Tracker* that I built for my web development course. It lets you:
